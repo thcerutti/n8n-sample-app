@@ -40,7 +40,34 @@ jobs:
           command: mkdir -p ~/test-results
       - run:
           name: Executar testes
-          command: npm test
+          command: |
+            # Verificar sintaxe do código
+            node -c server.js
+            echo "✅ Sintaxe JavaScript válida!"
+
+            # Iniciar servidor em background
+            npm start &
+            SERVER_PID=$!
+
+            # Aguardar servidor inicializar
+            sleep 5
+
+            # Testar endpoint
+            RESPONSE=$(curl -s http://localhost:3000/home)
+            echo "Resposta recebida: $RESPONSE"
+
+            # Verificar se a resposta contém "hello world"
+            if echo "$RESPONSE" | grep -q "hello world"; then
+              echo "✅ Endpoint /home retornou resposta correta!"
+            else
+              echo "❌ Resposta inesperada do endpoint"
+              kill $SERVER_PID
+              exit 1
+            fi
+
+            # Parar servidor
+            kill $SERVER_PID
+            echo "✅ Todos os testes passaram!"
       - run:
           name: Verificar sintaxe JavaScript
           command: npm run lint
