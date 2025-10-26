@@ -1,0 +1,144 @@
+version: 2.1
+
+# Define orbs (conjuntos reutilizáveis de configuração)
+orbs:
+  node: circleci/node@5.1.0
+  docker: circleci/docker@2.2.0
+
+# Define workflows
+workflows:
+  version: 2
+  build-test-deploy:
+    jobs:
+      - test
+      - build-docker:
+          requires:
+            - test
+          filters:
+            branches:
+              only:
+                - main
+                - develop
+      - deploy:
+          requires:
+            - build-docker
+          filters:
+            branches:
+              only: main
+
+# Define jobs
+jobs:
+  test:
+    executor: node/default
+    steps:
+      - checkout
+      - node/install-packages:
+          pkg-manager: npm
+      - run:
+          name: Criar diretório de logs de teste
+          command: mkdir -p ~/test-results
+      - run:
+          name: Executar testes (lint, formato, etc.)
+          command: |
+            # Como não temos testes definidos ainda, vamos fazer verificações básicas
+            echo "Verificando se a aplicação inicia corretamente..."
+            npm start &
+            sleep 5
+
+            # Testar se a aplicação responde
+            curl -f http://localhost:3000/home || exit 1
+
+            # Parar o servidor
+            pkill -f "node server.js" || true
+
+            echo "✅ Aplicação passou nos testes básicos!"
+      - run:
+          name: Verificar sintaxe JavaScript
+          command: |
+            echo "Verificando sintaxe dos arquivos JavaScript..."
+            node -c server.js
+            echo "✅ Sintaxe JavaScript válida!"
+      - store_test_results:
+          path: ~/test-results
+      - store_artifacts:
+          path: ~/test-results
+
+  build-docker:
+    executor: docker/docker
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 20.10.14
+          docker_layer_caching: true
+      - run:
+          name: Construir imagem Docker
+          command: |
+            docker build -t $CIRCLE_PROJECT_REPONAME:$CIRCLE_SHA1 .
+            docker build -t $CIRCLE_PROJECT_REPONAME:latest .
+      - run:
+          name: Testar imagem Docker
+          command: |
+            # Executar container para teste
+            docker run -d --name test-container -p 3000:3000 $CIRCLE_PROJECT_REPONAME:latest
+
+            # Aguardar container inicializar
+            sleep 10
+
+            # Testar endpoint
+            docker exec test-container wget --spider --quiet http://localhost:3000/home
+
+            # Limpar
+            docker stop test-container
+            docker rm test-container
+
+            echo "✅ Imagem Docker testada com sucesso!"
+      - run:
+          name: Salvar imagem Docker
+          command: |
+            mkdir -p ~/docker-images
+            docker save -o ~/docker-images/app.tar $CIRCLE_PROJECT_REPONAME:latest
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - docker-images
+
+  deploy:
+    executor: docker/docker
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ~/
+      - setup_remote_docker:
+          version: 20.10.14
+      - run:
+          name: Carregar imagem Docker
+          command: |
+            docker load -i ~/docker-images/app.tar
+      - run:
+          name: Login no Docker Hub (opcional)
+          command: |
+            # Descomente e configure as variáveis de ambiente no CircleCI para fazer push para Docker Hub
+            # echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+            echo "Login no Docker Hub desabilitado. Configure DOCKER_USERNAME e DOCKER_PASSWORD no CircleCI para habilitar."
+      - run:
+          name: Push da imagem (opcional)
+          command: |
+            # Descomente para fazer push para Docker Hub
+            # docker tag $CIRCLE_PROJECT_REPONAME:latest $DOCKER_USERNAME/$CIRCLE_PROJECT_REPONAME:latest
+            # docker tag $CIRCLE_PROJECT_REPONAME:latest $DOCKER_USERNAME/$CIRCLE_PROJECT_REPONAME:$CIRCLE_SHA1
+            # docker push $DOCKER_USERNAME/$CIRCLE_PROJECT_REPONAME:latest
+            # docker push $DOCKER_USERNAME/$CIRCLE_PROJECT_REPONAME:$CIRCLE_SHA1
+            echo "Push para Docker Hub desabilitado. Descomente as linhas acima para habilitar."
+      - run:
+          name: Deploy (simulado)
+          command: |
+            echo "🚀 Deploy realizado com sucesso!"
+            echo "Commit: $CIRCLE_SHA1"
+            echo "Branch: $CIRCLE_BRANCH"
+            echo "Projeto: $CIRCLE_PROJECT_REPONAME"
+
+            # Aqui você pode adicionar comandos reais de deploy:
+            # - Deploy para servidor
+            # - Atualização de containers em produção
+            # - Notificações para Slack/Discord
+            # - Etc.
