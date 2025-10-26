@@ -81,7 +81,6 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker:
-          version: 20.10.14
           docker_layer_caching: true
       - run:
           name: Construir imagem Docker
@@ -121,8 +120,7 @@ jobs:
       - checkout
       - attach_workspace:
           at: ~/
-      - setup_remote_docker:
-          version: 20.10.14
+      - setup_remote_docker
       - run:
           name: Carregar imagem Docker
           command: |
