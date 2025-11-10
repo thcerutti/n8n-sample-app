@@ -10,7 +10,7 @@ workflows:
   version: 2
   build-test-deploy:
     jobs:
-      - build-docker:
+      - build-and-push:
           filters:
             branches:
               only:
@@ -18,18 +18,42 @@ workflows:
 
 # Define jobs
 jobs:
-  build-docker:
+  build-and-push:
     executor: docker/docker
     steps:
       - checkout
       - setup_remote_docker:
           docker_layer_caching: true
+
       - run:
-          name: Construir imagem Docker
-          command: |
-            docker build -t $DOCKERHUB_USERNAME/$CIRCLE_PROJECT_REPONAME:latest .
-      - run:
-          name: Sobe para Docker Hub
+          name: Login no Docker Hub
           command: |
             echo $DOCKERHUB_ACCESS_TOKEN | docker login -u $DOCKERHUB_USERNAME --password-stdin
-            docker push $DOCKERHUB_USERNAME/$CIRCLE_PROJECT_REPONAME:latest
+
+      - run:
+          name: Build Docker Compose Images
+          command: |
+            docker compose build
+
+      - run:
+          name: List Built Images
+          command: |
+            docker images | grep n8n-sample-app
+
+      - run:
+          name: Tag Images for Docker Hub
+          command: |
+            # O Docker Compose cria imagens com o padrão: <diretório>-<serviço>
+            docker tag n8n-sample-app-backend:latest $DOCKERHUB_USERNAME/$CIRCLE_PROJECT_REPONAME:backend-latest
+            docker tag n8n-sample-app-frontend:latest $DOCKERHUB_USERNAME/$CIRCLE_PROJECT_REPONAME:frontend-latest
+            docker tag n8n-sample-app-backend:latest $DOCKERHUB_USERNAME/$CIRCLE_PROJECT_REPONAME:backend-$CIRCLE_SHA1
+            docker tag n8n-sample-app-frontend:latest $DOCKERHUB_USERNAME/$CIRCLE_PROJECT_REPONAME:frontend-$CIRCLE_SHA1
+
+      - run:
+          name: Push All Images (creates repo automatically if not exists)
+          command: |
+            # O Docker Hub cria repositórios automaticamente no primeiro push
+            docker push $DOCKERHUB_USERNAME/$CIRCLE_PROJECT_REPONAME:backend-latest
+            docker push $DOCKERHUB_USERNAME/$CIRCLE_PROJECT_REPONAME:frontend-latest
+            docker push $DOCKERHUB_USERNAME/$CIRCLE_PROJECT_REPONAME:backend-$CIRCLE_SHA1
+            docker push $DOCKERHUB_USERNAME/$CIRCLE_PROJECT_REPONAME:frontend-$CIRCLE_SHA1
