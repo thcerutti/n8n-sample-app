@@ -46,11 +46,6 @@ jobs:
             docker-compose build
 
       - run:
-          name: List Built Images
-          command: |
-            docker images | grep n8n-sample-app
-
-      - run:
           name: Tag Images for Docker Hub
           command: |
             # O Docker Compose cria imagens com o padrão: <diretório>-<serviço>
