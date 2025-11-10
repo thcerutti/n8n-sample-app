@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>n8n Sample App - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 n8n Sample App Dashboard</h1>
+            <p class="subtitle">Frontend consumindo API Backend</p>
+        </header>
+
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-label">Backend Status:</span>
+                <span id="backend-status" class="status-value">Verificando...</span>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-button active" onclick="showTab('users')">👥 Usuários</button>
+            <button class="tab-button" onclick="showTab('products')">📦 Produtos</button>
+        </div>
+
+        <div id="users-tab" class="tab-content active">
+            <div class="section-header">
+                <h2>Lista de Usuários</h2>
+                <button class="refresh-btn" onclick="loadUsers()">🔄 Atualizar</button>
+            </div>
+            <div id="users-loading" class="loading">Carregando usuários...</div>
+            <div id="users-error" class="error" style="display: none;"></div>
+            <div id="users-list" class="grid"></div>
+        </div>
+
+        <div id="products-tab" class="tab-content">
+            <div class="section-header">
+                <h2>Lista de Produtos</h2>
+                <button class="refresh-btn" onclick="loadProducts()">🔄 Atualizar</button>
+            </div>
+            <div id="products-loading" class="loading">Carregando produtos...</div>
+            <div id="products-error" class="error" style="display: none;"></div>
+            <div id="products-list" class="grid"></div>
+        </div>
+
+        <footer>
+            <p>Frontend rodando em <code>http://localhost:8080</code></p>
+            <p>Backend API em <code>http://localhost:3000</code></p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
